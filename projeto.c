@@ -8,10 +8,9 @@
 
 /////////////////////////////
 ///////              ////////
-///////              ////////
+///////    o tomas é gay          ////////
 /////////////////////////////
 int comprimento_caminho; // numero de arestas
-
 
 
 int main(void){
