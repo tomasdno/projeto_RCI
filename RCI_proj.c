@@ -12,7 +12,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-///////    o tomas é gay          ////////
 #define DEFAULT_REG_IP "193.136.138.142"
 #define DEFAULT_REG_UDP 59000
 
