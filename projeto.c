@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 //////////////////////////////////////////////////////////////////
-/*  Parametrosndo servidor nós (por omissão)                    */
+/*  Parametros do servidor nós (por omissão)                    */
 /*  Aplicação invocada pelo comando:                            */
 /*            OWR -  (OverlayWithRouting)                       */
 /*            IP  -  endereço da máquina que aloja a aplicação  */
