@@ -35,16 +35,15 @@
 /* ================================================================
  * CONSTANTES
  * ================================================================ */
-#define MAX_VIZINHOS   64       /* máximo de vizinhos simultâneos   */
-#define MAX_DEST       100      /* IDs de 00 a 99                   */
-#define BUF_SIZE       1024     /* tamanho genérico de buffer        */
-#define CHAT_MAX       128      /* máximo de carateres numa msg chat */
+#define MAX_VIZINHOS   64       // máximo de vizinhos simultâneos   
+#define MAX_DEST       100      // IDs de 00 a 99                   
+#define BUF_SIZE       1024     // tamanho genérico de buffer        
+#define CHAT_MAX       128      // máximo de carateres numa msg chat 
 
-#define REG_IP_DFLT    "193.136.138.142"
-#define REG_UDP_DFLT   "59000"
+#define REG_IP_DFLT    "193.136.138.142" // IP do servidor de nós default
+#define REG_UDP_DFLT   "59000" // porto UDP do servidor de nós default
 
-/* dist "infinito" representado por -1 */
-#define INF  -1
+#define INF  -1 // distância infinita (indica destino inalcançável)
 
 /* ================================================================
  * ESTRUTURAS DE DADOS
@@ -59,12 +58,15 @@ typedef struct {
 } Vizinho;
 
 /* --- Estado de encaminhamento por destino --- */
-typedef enum { EXPEDICAO = 0, COORDENACAO = 1 } EstadoRota;
+typedef enum { EXPEDICAO = 0, COORDENACAO = 1 } EstadoRota; // estado de encaminhamento 
+// EXPEDIÇÃO -> encontrar uma conexão de sucesso (ou caminho) para o destino e enviar mensagens ROUTE aos vizinhos
+// COORDENAÇÃO -> nó já tem conhecimento de que não pode mais contar com um sucessor (reconfigurada a rota)
+// o que removemos é o que fica em expedição 
 
 typedef struct {
     int        dist;                    /* distância estimada (INF = ∞)     */
     int        succ;                    /* vizinho de expedição (-1 = nenhum)*/
-    EstadoRota estado;
+    EstadoRota estado;                  // estado atual da rota
     /* variáveis adicionais em estado de coordenação */
     int        succ_coord;              /* vizinho que causou coordenação    */
     int        coord[MAX_VIZINHOS];     /* coord[i]=1: coordenação em curso  */
@@ -73,22 +75,22 @@ typedef struct {
 /* ================================================================
  * ESTADO GLOBAL
  * ================================================================ */
-static char my_ip[64]   = "";
-static char my_tcp[16]  = "";
-static char reg_ip[64]  = REG_IP_DFLT;
-static char reg_udp[16] = REG_UDP_DFLT;
-static char my_net[4]   = "";   /* rede actual ("000"–"999") */
-static char my_id[4]    = "";   /* id actual   ("00"–"99")  */
-static int  joined      = 0;    /* 1 se estiver registado    */
+static char my_ip[64]   = ""; // IP do nó (string)
+static char my_tcp[16]  = ""; // porto TCP onde o nó aceita ligações (string)
+static char reg_ip[64]  = REG_IP_DFLT; // IP do servidor de nós (string)
+static char reg_udp[16] = REG_UDP_DFLT; // porto UDP do servidor de nós (string)
+static char my_net[4]   = "";   // rede actual ("000"–"999") 
+static char my_id[4]    = "";   // id actual   ("00"–"99")  
+static int  joined      = 0;    // 1 se estiver registado    *
 
 static int listen_fd = -1;      /* socket TCP de escuta      */
 static int udp_fd    = -1;      /* socket UDP (servidor nós) */
 
-static Vizinho    vizinhos[MAX_VIZINHOS];
-static int        nb_count = 0;
+static Vizinho    vizinhos[MAX_VIZINHOS]; // lista de vizinhos TCP conectados (máximo MAX_VIZINHOS)
+static int        nb_count = 0; // número de vizinhos atualmente conectados
 
-static EntradaRota rota[MAX_DEST];
-static int         monitor_on = 0;   /* mostrar msgs de encaminhamento? */
+static EntradaRota rota[MAX_DEST]; // array da struct array EntradaRota 
+static int         monitor_on = 0;   // flag para indicar se o monitor de mensagens está ativo (1) ou não (0)
 
 /* buffer de leitura parcial por fd (para mensagens TCP fragmentadas) */
 typedef struct {
@@ -101,18 +103,24 @@ static ReadBuf rb[1024];   /* indexado pelo fd */
  * UTILITÁRIOS GERAIS
  * ================================================================ */
 
-/* Ignora SIGPIPE para não morrer ao escrever num socket fechado */
+/* Ignora o programa tenta escrever num socket ou pipe que já foi fechado pelo outro lado para não morrer ao escrever num socket fechado */
 static void setup_signals(void) {
-    struct sigaction act;
-    memset(&act, 0, sizeof act);
-    act.sa_handler = SIG_IGN;
+    struct sigaction act;// estrutura para especificar ação a tomar em caso de sinal
+    memset(&act, 0, sizeof act); // inicializa a estrutura com zeros
+    act.sa_handler = SIG_IGN; // 
     sigaction(SIGPIPE, &act, NULL);
 }
+    // struct sigaction act;
+    // act.sa_handler = handler;
+    // sigemptyset(&sa.sa_mask);
+    // act.sa_flags = 0;
+    // sigaction(SIGINT, &act, NULL);
+
 
 /* Encontra vizinho pelo fd */
-static int vizinho_por_fd(int fd) {
-    for (int i = 0; i < nb_count; i++)
-        if (vizinhos[i].fd == fd) return i;
+static int vizinho_por_fd(int fd) { // percorre a lista de vizinhos para encontrar o índice do vizinho com o fd especificado
+    for (int i = 0; i < nb_count; i++)  
+        if (vizinhos[i].fd == fd) return i; // se encontrar o vizinho com o fd correspondente, retorna o índice
     return -1;
 }
 
@@ -125,12 +133,12 @@ static int vizinho_por_id(const char *id) {
 
 /* Calcula fd máximo para o select() */
 static int max_fd(void) {
-    int m = listen_fd;
-    if (udp_fd > m) m = udp_fd;
-    for (int i = 0; i < nb_count; i++)
-        if (vizinhos[i].fd > m) m = vizinhos[i].fd;
+    int m = listen_fd; // começa com o fd do socket TCP de escuta
+    if (udp_fd > m) m = udp_fd; // compara com o fd do socket UDP e atualiza se for maior
+    for (int i = 0; i < nb_count; i++) // percorre a lista de vizinhos para encontrar o maior fd dos mesmos
+        if (vizinhos[i].fd > m) m = vizinhos[i].fd; // comparação do maiuor fd ja encontrado
     /* stdin = 0, sempre menor */
-    return m;
+    return m; // maior fd encontrado
 }
 
 /* Escrita completa num fd TCP */
@@ -167,16 +175,16 @@ static void rota_init(void) {
 /* ================================================================
  * SERVIDOR UDP (comunicação com servidor de nós)
  * ================================================================ */
-static int cria_udp_socket(void) {
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+static int cria_udp_socket(void) { // slides upd client
+    int fd = socket(AF_INET, SOCK_DGRAM, 0); // cria um socket UDP usando IPv4
     if (fd == -1) { perror("socket UDP"); exit(1); }
-    return fd;
+    return fd; // retorna o file descriptor do socket criado
 }
 
 /* Transação UDP com timeout (2 s) ao servidor de nós.
    Devolve 0 se OK, -1 se erro/timeout. */
-static int udp_transacao(const char *pedido, char *resposta, int resp_size) {
-    struct addrinfo hints, *res;
+static int udp_transacao(const char *pedido, char *resposta, int resp_size) { // slides udp client
+    struct addrinfo hints, *res; //
     memset(&hints, 0, sizeof hints);
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -192,12 +200,12 @@ static int udp_transacao(const char *pedido, char *resposta, int resp_size) {
     if (n == -1) { perror("sendto"); return -1; }
 
     /* Aguarda resposta com timeout de 2 s */
-    fd_set rfds;
+    fd_set rfds; // 
     struct timeval tv;
     FD_ZERO(&rfds);
     FD_SET(udp_fd, &rfds);
-    tv.tv_sec  = 2;
-    tv.tv_usec = 0;
+    tv.tv_sec  = 2; // tempo maximo de espera por resposta do servidor de nós 2 segundos
+    tv.tv_usec = 0; // + tempo em microsegundos
 
     int r = select(udp_fd + 1, &rfds, NULL, NULL, &tv);
     if (r <= 0) {
@@ -211,12 +219,13 @@ static int udp_transacao(const char *pedido, char *resposta, int resp_size) {
 }
 
 /* ================================================================
- * SERVIDOR TCP DE ESCUTA
+ * SERVIDOR TCP (aceitar ligações de vizinhos)
  * ================================================================ */
 static int cria_tcp_servidor(const char *porto) {
-    struct addrinfo hints, *res;
+    struct addrinfo hints, *res; //struct com informações para socket TCP
     int fd, yes = 1;
 
+    // slides tcp server
     memset(&hints, 0, sizeof hints);
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -228,7 +237,7 @@ static int cria_tcp_servidor(const char *porto) {
     fd = socket(res->ai_family, res->ai_socktype, 0);
     if (fd == -1) { perror("socket TCP servidor"); exit(1); }
 
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes); //
 
     if (bind(fd, res->ai_addr, res->ai_addrlen) == -1) {
         perror("bind TCP servidor"); exit(1);
@@ -420,30 +429,30 @@ static void adiciona_vizinho(int fd, const char *id,
 
 /* Remove vizinho por índice */
 static void remove_vizinho(int idx) {
-    int dest_fd = vizinhos[idx].fd;
-    printf("Vizinho %s removido\n", vizinhos[idx].id);
-    close(dest_fd);
+    int dest_fd = vizinhos[idx].fd; // fd do vizinho a remover
+    printf("Vizinho %s removido\n", vizinhos[idx].id); 
+    close(dest_fd); // fecha a conexão TCP com o vizinho a remover
 
     /* Protocolo de encaminhamento: remoção de aresta */
-    for (int d = 0; d < MAX_DEST; d++) {
-        if (rota[d].estado == EXPEDICAO) {
-            if (rota[d].succ == atoi(vizinhos[idx].id)) {
+    for (int d = 0; d < MAX_DEST; d++) { // percorre todos os destinos para verificar se o vizinho removido é o sucessor de algum destino
+        if (rota[d].estado == EXPEDICAO) { // se o destino estiver em estado de expedição, verifica se o sucessor é o vizinho removido
+            if (rota[d].succ == atoi(vizinhos[idx].id)) { // se o sucessor do destino for o vizinho removido, precisamos entrar em coordenação
                 /* sucessor perdido -> entra em coordenação */
                 rota[d].estado     = COORDENACAO;
-                rota[d].succ_coord = -1;  /* falha de ligação */
-                rota[d].dist       = INF;
-                rota[d].succ       = -1;
+                rota[d].succ_coord = -1;  // não sabemos qual é o sucessor durante a coordenação
+                rota[d].dist       = INF; // distância passa a ser infinita durante a coordenação
+                rota[d].succ       = -1; // sucessor passa a ser desconhecido durante a coordenação
                 /* envia COORD a todos os outros vizinhos */
-                for (int k = 0; k < nb_count; k++) {
+                for (int k = 0; k < nb_count; k++) { // coordenação com os outros vizinhos (exceto o removido)
                     if (k == idx) continue;
-                    rota[d].coord[k] = 1;
-                    envia_coord_a(k, d);
+                    rota[d].coord[k] = 1; //
+                    envia_coord_a(k, d); // envia mensagem de coordenação para os outros vizinhos
                 }
                 /* se não há outros vizinhos, volta a EXPEDICAO imediatamente */
                 int tem_outros = 0;
                 for (int k = 0; k < nb_count; k++)
                     if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; }
-                if (!tem_outros) rota[d].estado = EXPEDICAO;
+                if (!tem_outros) rota[d].estado = EXPEDICAO; // sem vizinhos, volta o estado de encaminhamento EXPEDICAO
             }
         } else {
             /* estado COORDENACAO: o vizinho removido já não é dependência */
@@ -606,12 +615,12 @@ static void cmd_join(const char *net, const char *id, int directo) {
     }
 }
 
-/* leave */
+// leave -> remove todas as arestas, envia pedido de remoção ao servidor de nós e limpa estado local
 static void cmd_leave(void) {
     if (!joined) { printf("Não está em nenhuma rede.\n"); return; }
 
     /* Fecha todas as arestas */
-    while (nb_count > 0)
+    while (nb_count > 0) // passa por todos os vizinhos e remove um por um até não ter mais vizinhos
         remove_vizinho(0);
 
     /* REG tid 3 net id\n  (pedido de remoção) */
@@ -794,8 +803,8 @@ static void cmd_end_monitor(void)   { monitor_on = 0; printf("Monitor OFF\n"); }
  * PROCESSAMENTO DE COMANDOS DO UTILIZADOR (stdin)
  * ================================================================ */
 static void processa_stdin(void) {
-    char linha[BUF_SIZE];
-    if (!fgets(linha, sizeof linha, stdin)) {
+    char linha[BUF_SIZE]; // buffer da linha de comando
+    if (!fgets(linha, sizeof linha, stdin)) { // ler a linha stdin
         /* EOF no stdin -> sai */
         if (joined) cmd_leave();
         exit(0);
@@ -892,28 +901,28 @@ static void processa_stdin(void) {
 }
 
 /* ================================================================
- * CICLO PRINCIPAL (select)
+ * CICLO PRINCIPAL (select) ver slides guia utilização select
  * ================================================================ */
 static void ciclo_principal(void) {
     while (1) {
-        fd_set rfds;
-        FD_ZERO(&rfds);
-        FD_SET(0, &rfds);               /* stdin */
-        FD_SET(listen_fd, &rfds);       /* TCP escuta */
+        fd_set rfds; //select 
+        FD_ZERO(&rfds); // coemçar com conjunto vazio
+        FD_SET(0, &rfds);   // 
+        FD_SET(listen_fd, &rfds);  //
         if (udp_fd >= 0)
             FD_SET(udp_fd, &rfds);      /* UDP (respostas do servidor de nós) */
         for (int i = 0; i < nb_count; i++)
             FD_SET(vizinhos[i].fd, &rfds);
 
-        int mfd = max_fd();
-        int ret = select(mfd + 1, &rfds, NULL, NULL, NULL);
-        if (ret < 0) {
+        int mfd = max_fd(); // encontra o maior fd para passar ao select
+        int ret = select(mfd + 1, &rfds, NULL, NULL, NULL); // espera por atividade em algum fd
+        if (ret < 0) { // erro do select
             if (errno == EINTR) continue;
             perror("select"); break;
         }
 
         /* stdin */
-        if (FD_ISSET(0, &rfds))
+        if (FD_ISSET(0, &rfds)) // se há atividade no stdin
             processa_stdin();
 
         /* nova ligação TCP */
@@ -939,24 +948,24 @@ static void ciclo_principal(void) {
  * MAIN
  * ================================================================ */
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
+    if (argc < 3) { // IP TCP [regIP [regUDP]]
         fprintf(stderr, "Uso: %s IP TCP [regIP [regUDP]]\n", argv[0]);
         exit(1);
     }
 
-    strncpy(my_ip,  argv[1], sizeof my_ip  - 1);
-    strncpy(my_tcp, argv[2], sizeof my_tcp - 1);
+    strncpy(my_ip,  argv[1], sizeof my_ip  - 1); // -1 por causa do \n
+    strncpy(my_tcp, argv[2], sizeof my_tcp - 1); 
     if (argc >= 4) strncpy(reg_ip,  argv[3], sizeof reg_ip  - 1);
     if (argc >= 5) strncpy(reg_udp, argv[4], sizeof reg_udp - 1);
 
-    srand((unsigned)getpid());
-    setup_signals();
+    srand((unsigned)getpid()); // para gerar tid aleatórios ?
+    setup_signals();           // ???????????????
 
     /* Cria socket UDP para comunicação com servidor de nós */
-    udp_fd = cria_udp_socket();
+    udp_fd = cria_udp_socket(); // 
 
     /* Cria servidor TCP de escuta */
-    listen_fd = cria_tcp_servidor(my_tcp);
+    listen_fd = cria_tcp_servidor(my_tcp); // cria o socket TCP com o porto my_tcp
 
     printf("OWR iniciado: IP=%s  TCP=%s  regIP=%s  regUDP=%s\n",
            my_ip, my_tcp, reg_ip, reg_udp);
