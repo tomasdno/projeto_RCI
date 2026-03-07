@@ -157,7 +157,7 @@ static int tcp_envia(int fd, const char *msg) { // envia a mensagem msg para o f
  * INICIALIZAÇÃO DE ENCAMINHAMENTO
  * ================================================================ */
 static void rota_init(void) {
-    for (int i = 0; i < MAX_DEST; i++) { //
+    for (int i = 0; i < MAX_DEST; i++) { // inicializa a tabela de roteamento para cada destino
         rota[i].dist       = INF;
         rota[i].succ       = -1;
         rota[i].estado     = EXPEDICAO;
@@ -166,7 +166,7 @@ static void rota_init(void) {
     }
     /* O nó conhece-se a si próprio com distância 0 */
     int id_int = atoi(my_id);
-    if (id_int >= 0 && id_int < MAX_DEST) {
+    if (id_int >= 0 && id_int < MAX_DEST) { // se o id do nó for válido, inicializa a rota para si próprio
         rota[id_int].dist  = 0;
         rota[id_int].succ  = id_int;  /* sucessor = si próprio */
     }
