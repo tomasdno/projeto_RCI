@@ -142,13 +142,13 @@ static int max_fd(void) {
 }
 
 /* Escrita completa num fd TCP */
-static int tcp_envia(int fd, const char *msg) {
-    size_t len   = strlen(msg);
+static int tcp_envia(int fd, const char *msg) { // envia a mensagem msg para o fd especificado
     size_t enviado = 0;
-    while (enviado < len) {
-        ssize_t n = write(fd, msg + enviado, len - enviado);
-        if (n <= 0) return -1;
-        enviado += (size_t)n;
+    int len = strlen(msg); // calcula o tamanho da mensagem a ser enviada (tive que adicionar)
+    while (enviado < len) {  
+        ssize_t n = write(fd, msg + enviado, len - enviado); // escreve parte da mensagem que falta enviar
+        if (n <= 0) return -1; 
+        enviado += (size_t)n; // atualiza a quantidade de bytes enviados
     }
     return 0;
 }
@@ -157,7 +157,7 @@ static int tcp_envia(int fd, const char *msg) {
  * INICIALIZAÇÃO DE ENCAMINHAMENTO
  * ================================================================ */
 static void rota_init(void) {
-    for (int i = 0; i < MAX_DEST; i++) {
+    for (int i = 0; i < MAX_DEST; i++) { //
         rota[i].dist       = INF;
         rota[i].succ       = -1;
         rota[i].estado     = EXPEDICAO;
@@ -293,12 +293,12 @@ static void envia_route_a(int nb_idx, int dest, int dist) {
     tcp_envia(vizinhos[nb_idx].fd, msg);
 }
 
-static void envia_coord_a(int nb_idx, int dest) {
+static void envia_coord_a(int nb_idx, int dest) { // msg para vizinho nb_idx com destino dest 
     char msg[BUF_SIZE];
-    snprintf(msg, sizeof msg, "COORD %02d\n", dest);
-    if (monitor_on)
-        printf("[MONITOR] -> %s: %s", vizinhos[nb_idx].id, msg);
-    tcp_envia(vizinhos[nb_idx].fd, msg);
+    snprintf(msg, sizeof msg, "COORD %02d\n", dest); // msg coordenação destino dest
+    if (monitor_on) 
+        printf("[MONITOR] -> %s: %s", vizinhos[nb_idx].id, msg); 
+    tcp_envia(vizinhos[nb_idx].fd, msg); // envia a msg de coordenação para o vizinho nb_idx
 }
 
 static void envia_uncoord_a(int nb_idx, int dest) {
@@ -439,30 +439,30 @@ static void remove_vizinho(int idx) {
             if (rota[d].succ == atoi(vizinhos[idx].id)) { // se o sucessor do destino for o vizinho removido, precisamos entrar em coordenação
                 /* sucessor perdido -> entra em coordenação */
                 rota[d].estado     = COORDENACAO;
-                rota[d].succ_coord = -1;  // não sabemos qual é o sucessor durante a coordenação
+                rota[d].succ_coord = -1;  // remove a dependencia de sucessor
                 rota[d].dist       = INF; // distância passa a ser infinita durante a coordenação
-                rota[d].succ       = -1; // sucessor passa a ser desconhecido durante a coordenação
+                rota[d].succ       = -1; // sucessor passa a ser desconhecido durante a coordenação (TEMPORARIO)
                 /* envia COORD a todos os outros vizinhos */
                 for (int k = 0; k < nb_count; k++) { // coordenação com os outros vizinhos (exceto o removido)
-                    if (k == idx) continue;
-                    rota[d].coord[k] = 1; //
+                    if (k == idx) continue; // não envia coordenação para o vizinho removido
+                    rota[d].coord[k] = 1; // //espera de coordenação do vizinho k para o destino d
                     envia_coord_a(k, d); // envia mensagem de coordenação para os outros vizinhos
                 }
-                /* se não há outros vizinhos, volta a EXPEDICAO imediatamente */
+                /* se não há outros vizinhos, volta a EXPEDICAO  */
                 int tem_outros = 0;
-                for (int k = 0; k < nb_count; k++)
-                    if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; }
+                for (int k = 0; k < nb_count; k++) // verifica se há outros vizinhos além do removido que estão em coordenação para o destino d
+                    if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; } // se encontrar algum viznho em coordenação para d aumenta a flag tem_outros
                 if (!tem_outros) rota[d].estado = EXPEDICAO; // sem vizinhos, volta o estado de encaminhamento EXPEDICAO
             }
         } else {
             /* estado COORDENACAO: o vizinho removido já não é dependência */
-            rota[d].coord[idx] = 0;
+            rota[d].coord[idx] = 0; // se o destino d estiver em estado de coordenação, o vizinho removido não é mais dependência, então marca a coordenação com esse vizinho como 0 (sem dependência)
         }
     }
 
     /* Remove da lista de vizinhos (swap com último) */
-    memset(&rb[dest_fd], 0, sizeof rb[dest_fd]);
-    vizinhos[idx] = vizinhos[--nb_count];
+    memset(&rb[dest_fd], 0, sizeof rb[dest_fd]); // clear buffer de leitura do fd do vizinho removido
+    vizinhos[idx] = vizinhos[--nb_count];  // remove vizinho da lista
 }
 
 /* ================================================================
@@ -813,16 +813,16 @@ static void processa_stdin(void) {
     linha[strcspn(linha, "\n")] = '\0';
     if (strlen(linha) == 0) return;
 
-    char cmd[32], a1[128], a2[128], a3[BUF_SIZE];
-    a1[0] = a2[0] = a3[0] = '\0';
-    sscanf(linha, "%31s %127s %127s %1023[^\n]", cmd, a1, a2, a3);
+    char cmd[32], a1[128], a2[128], a3[BUF_SIZE]; // buffers para comando e argumentos
+    a1[0] = a2[0] = a3[0] = '\0'; 
+    sscanf(linha, "%31s %127s %127s %1023[^\n]", cmd, a1, a2, a3); // cmd->comando a1->id a2->ip a3->tcp_port 
 
     /* --- Etapa 2 --- */
     if (strcmp(cmd, "join") == 0 || strcmp(cmd, "j") == 0) {
         if (strlen(a1) == 0 || strlen(a2) == 0)
             printf("Uso: join net id\n");
         else
-            cmd_join(a1, a2, 0);
+            cmd_join(a1, a2, 0); 
     }
     else if (strcmp(cmd, "leave") == 0 || strcmp(cmd, "l") == 0) {
         cmd_leave();
