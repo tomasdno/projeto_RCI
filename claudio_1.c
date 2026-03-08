@@ -556,16 +556,16 @@ static int le_vizinho(int fd) {
  * ACEITAR NOVA LIGAÇÃO TCP
  * ================================================================ */
 static void aceita_ligacao(void) {
-    struct sockaddr addr;
-    socklen_t addrlen = sizeof addr;
-    int newfd = accept(listen_fd, &addr, &addrlen);
-    if (newfd == -1) { perror("accept"); return; }
+    struct sockaddr addr; // estrutura para armazenar o endereço do cliente que está tentando se conectar
+    socklen_t addrlen = sizeof addr; // variável para armazenar o tamanho do endereço do cliente, necessário para a função accept
+    int newfd = accept(listen_fd, &addr, &addrlen); // aceita a nova conexão TCP, criando um novo socket para comunicação com o cliente e preenchendo a estrutura addr com as informações do cliente
+    if (newfd == -1) { perror("accept"); return; } 
 
     /* Obtém IP do cliente */
     char ip_str[64] = "?";
-    if (addr.sa_family == AF_INET) {
-        struct sockaddr_in *sa = (struct sockaddr_in *)&addr;
-        inet_ntop(AF_INET, &sa->sin_addr, ip_str, sizeof ip_str);
+    if (addr.sa_family == AF_INET) { // verificação de IPv4
+        struct sockaddr_in *sa = (struct sockaddr_in *)&addr; //
+        inet_ntop(AF_INET, &sa->sin_addr, ip_str, sizeof ip_str); // converte o endereço IP do cliente para uma string legível e armazena em ip_str
     }
 
     /* Adiciona temporariamente com id "??" até receber NEIGHBOR */
@@ -926,7 +926,7 @@ static void ciclo_principal(void) {
             processa_stdin();
 
         /* nova ligação TCP */
-        if (FD_ISSET(listen_fd, &rfds))
+        if (FD_ISSET(listen_fd, &rfds)) // se há uma nova ligação chegando no socket de escuta TCP
             aceita_ligacao();
 
         /* vizinhos TCP */
