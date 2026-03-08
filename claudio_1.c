@@ -66,7 +66,7 @@ typedef enum { EXPEDICAO = 0, COORDENACAO = 1 } EstadoRota; // estado de encamin
 typedef struct {
     int        dist;                    /* distância estimada (INF = ∞)     */
     int        succ;                    /* vizinho de expedição (-1 = nenhum)*/
-    EstadoRota estado;                  // estado atual da rota
+    EstadoRota estado;                  // estado atual da rota expedição ou coordenação
     /* variáveis adicionais em estado de coordenação */
     int        succ_coord;              /* vizinho que causou coordenação    */
     int        coord[MAX_VIZINHOS];     /* coord[i]=1: coordenação em curso  */
@@ -165,7 +165,7 @@ static void rota_init(void) {
         memset(rota[i].coord, 0, sizeof rota[i].coord);
     }
     /* O nó conhece-se a si próprio com distância 0 */
-    int id_int = atoi(my_id);
+    int id_int = atoi(my_id); // conversao string para int
     if (id_int >= 0 && id_int < MAX_DEST) { // se o id do nó for válido, inicializa a rota para si próprio
         rota[id_int].dist  = 0;
         rota[id_int].succ  = id_int;  /* sucessor = si próprio */
@@ -189,13 +189,13 @@ static int udp_transacao(const char *pedido, char *resposta, int resp_size) { //
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if (getaddrinfo(reg_ip, reg_udp, &hints, &res) != 0) {
+    if (getaddrinfo(reg_ip, reg_udp, &hints, &res) != 0) { // obtém as informações de endereço do servidor de nós usando o IP e porto configurados
         fprintf(stderr, "Erro: getaddrinfo servidor de nós\n");
         return -1;
     }
 
     ssize_t n = sendto(udp_fd, pedido, strlen(pedido), 0,
-                       res->ai_addr, res->ai_addrlen);
+                       res->ai_addr, res->ai_addrlen); // envia o pedido para o servidor de nós usando o socket UDP
     freeaddrinfo(res);
     if (n == -1) { perror("sendto"); return -1; }
 
@@ -207,14 +207,14 @@ static int udp_transacao(const char *pedido, char *resposta, int resp_size) { //
     tv.tv_sec  = 2; // tempo maximo de espera por resposta do servidor de nós 2 segundos
     tv.tv_usec = 0; // + tempo em microsegundos
 
-    int r = select(udp_fd + 1, &rfds, NULL, NULL, &tv);
+    int r = select(udp_fd + 1, &rfds, NULL, NULL, &tv); // aguarda até que o socket UDP esteja pronto para leitura (resposta do servidor de nós) ou até que o timeout ocorra
     if (r <= 0) {
         fprintf(stderr, "Timeout aguardando resposta do servidor de nós\n");
         return -1;
     }
-    n = recvfrom(udp_fd, resposta, resp_size - 1, 0, NULL, NULL);
+    n = recvfrom(udp_fd, resposta, resp_size - 1, 0, NULL, NULL); // lê a resposta do servidor de nós para o buffer resposta, garantindo que haja espaço para a terminação de string
     if (n <= 0) { perror("recvfrom"); return -1; }
-    resposta[n] = '\0';
+    resposta[n] = '\0'; // adiciona terminação de string à resposta recebida
     return 0;
 }
 
@@ -275,22 +275,22 @@ static int tcp_liga(const char *ip, const char *porto) {
 /* ================================================================
  * MENSAGENS DE ENCAMINHAMENTO – ENVIO
  * ================================================================ */
-static void envia_route_todos(int dest, int dist) {
+static void envia_route_todos(int dest, int dist) { //msg de rotta para todos os vizinhos com destino dest, desitancia dist 
     char msg[BUF_SIZE];
-    snprintf(msg, sizeof msg, "ROUTE %02d %d\n", dest, dist);
-    for (int i = 0; i < nb_count; i++) {
+    snprintf(msg, sizeof msg, "ROUTE %02d %d\n", dest, dist); //msg de rota para o destino dest com distância dist
+    for (int i = 0; i < nb_count; i++) { // envia a mensagem de rota para todos os vizinhos conectados
         if (monitor_on)
             printf("[MONITOR] -> %s: %s", vizinhos[i].id, msg);
-        tcp_envia(vizinhos[i].fd, msg);
+        tcp_envia(vizinhos[i].fd, msg); //msg rota para vizinho i com destino dest e distância dist
     }
 }
 
-static void envia_route_a(int nb_idx, int dest, int dist) {
+static void envia_route_a(int nb_idx, int dest, int dist) { // msg para vizinho nb_idx com destino dest e distância dist
     char msg[BUF_SIZE];
-    snprintf(msg, sizeof msg, "ROUTE %02d %d\n", dest, dist);
+    snprintf(msg, sizeof msg, "ROUTE %02d %d\n", dest, dist); // msg de rota para o vizinho nb_idx com destino dest e distância dist
     if (monitor_on)
-        printf("[MONITOR] -> %s: %s", vizinhos[nb_idx].id, msg);
-    tcp_envia(vizinhos[nb_idx].fd, msg);
+        printf("[MONITOR] -> %s: %s", vizinhos[nb_idx].id, msg); //imprime msg rota caso monitor esteja ativo
+    tcp_envia(vizinhos[nb_idx].fd, msg); //msg de rota para vizinho[nb_idx] com destino dest e distância dist
 }
 
 static void envia_coord_a(int nb_idx, int dest) { // msg para vizinho nb_idx com destino dest 
@@ -314,20 +314,20 @@ static void envia_uncoord_a(int nb_idx, int dest) {
  * ================================================================ */
 
 /* Receção de ROUTE dest n vindo do vizinho from_nb */
-static void recebe_route(int from_nb, int dest, int n) {
+static void recebe_route(int from_nb, int dest, int n) { //msg rota, destino dest, distancia n, recebida do vizinho from_nb
     if (monitor_on)
         printf("[MONITOR] <- %s: ROUTE %02d %d\n",
                vizinhos[from_nb].id, dest, n);
 
     /* Ignora anúncios do próprio nó */
-    if (dest == atoi(my_id)) return;
-    if (dest < 0 || dest >= MAX_DEST) return;
+    if (dest == atoi(my_id)) return; // se o destino da msg de rota for o próprio nó, ignora a mensagem (não processa rotas para si próprio)
+    if (dest < 0 || dest >= MAX_DEST) return; // erro caso destino seja inválido
 
-    int nova_dist = n + 1;
-    if (rota[dest].dist == INF || nova_dist < rota[dest].dist) {
+    int nova_dist = n + 1; // nova distancia para o dest pelo vizinho from_nb (distancia anunciada pelo vizinho + 1 para contar a aresta até o vizinho)
+    if (rota[dest].dist == INF || nova_dist < rota[dest].dist) { // nova distância calculada for menor do que a distância atual, atualiza a rota para esse destino
         rota[dest].dist = nova_dist;
-        rota[dest].succ = atoi(vizinhos[from_nb].id);
-        if (rota[dest].estado == EXPEDICAO)
+        rota[dest].succ = atoi(vizinhos[from_nb].id); // atualiza o sucessor para o destino dest como o vizinho from_nb (o vizinho que anunciou a rota mais curta)
+        if (rota[dest].estado == EXPEDICAO) //se dest = expedição, envia msg de rota para todos os vizinhos com a nova distância para esse destino
             envia_route_todos(dest, rota[dest].dist);
     }
 }
@@ -404,12 +404,13 @@ static void recebe_uncoord(int from_nb, int dest) {
 /* Adiciona vizinho já com fd e id conhecidos */
 static void adiciona_vizinho(int fd, const char *id,
                               const char *ip, const char *tcp_port) {
-    if (nb_count >= MAX_VIZINHOS) {
+    if (nb_count >= MAX_VIZINHOS) { // verificação nº max vizinhos atingida
         fprintf(stderr, "Erro: número máximo de vizinhos atingido\n");
         close(fd);
         return;
     }
-    int i = nb_count++;
+    int i = nb_count++; // incrementa nº de vizinhos e guarda o índice do novo vizinho
+    //guardar os dados do novo vizinho com nº i na struct vizinhos: fd, id, ip e porto tcp
     vizinhos[i].fd = fd;
     strncpy(vizinhos[i].id,  id,       sizeof vizinhos[i].id  - 1);
     strncpy(vizinhos[i].ip,  ip,       sizeof vizinhos[i].ip  - 1);
@@ -421,8 +422,8 @@ static void adiciona_vizinho(int fd, const char *id,
        - se estiver em COORDENACAO, o novo viz. não é dependência (coord=0) */
     for (int d = 0; d < MAX_DEST; d++) {
         rota[d].coord[i] = 0;   /* por omissão não é dependência */
-        if (rota[d].estado == EXPEDICAO && rota[d].dist != INF)
-            envia_route_a(i, d, rota[d].dist);
+        if (rota[d].estado == EXPEDICAO && rota[d].dist != INF) // se o destino d estiver em estado de expedição e a distância para esse destino for diferente de infinito, envia uma mensagem ROUTE para o novo vizinho com a distância atual para esse destino
+            envia_route_a(i, d, rota[d].dist); // msg route parar viz i com destino d e distancia rota[d].dist
     }
     printf("Vizinho %s adicionado (fd=%d)\n", id, fd);
 }
@@ -469,8 +470,8 @@ static void remove_vizinho(int idx) {
  * PROCESSAMENTO DE MENSAGENS RECEBIDAS DE UM VIZINHO TCP
  * ================================================================ */
 static void processa_msg_vizinho(int nb_idx, const char *linha) {
-    char tipo[32];
-    if (sscanf(linha, "%31s", tipo) != 1) return;
+    char tipo[32]; // string com tipo de msg 
+    if (sscanf(linha, "%31s", tipo) != 1) return; // erro
 
     if (strcmp(tipo, "NEIGHBOR") == 0) {
         /* NEIGHBOR id  – identificação do vizinho */
@@ -528,26 +529,27 @@ static void processa_msg_vizinho(int nb_idx, const char *linha) {
 
 /* Lê dados de um fd TCP e processa linha a linha */
 static int le_vizinho(int fd) {
-    if (fd < 0 || fd >= 1024) return -1;
-    ReadBuf *b = &rb[fd];
-    ssize_t n = read(fd, b->buf + b->len, sizeof(b->buf) - b->len - 1);
+    if (fd < 0 || fd >= 1024) return -1; // verificação de fd válido para acessar o buffer de leitura
+    ReadBuf *b = &rb[fd]; // ponteiro para o buffer de leitura associado ao fd especificado
+    ssize_t n = read(fd, b->buf + b->len, sizeof(b->buf) - b->len - 1); // le dados fd, armazena no buffer de leitura a partir da posicao b->len
     if (n <= 0) return -1;   /* conexão fechada ou erro */
-    b->len += (int)n;
-    b->buf[b->len] = '\0';
+    b->len += (int)n; // atualiza o comprimento dos dados lidos no buffer
+    b->buf[b->len] = '\0'; // adicona terminação de strung
 
     /* Processa todas as linhas completas (terminadas em '\n') */
-    char *ptr = b->buf;
-    char *nl;
-    while ((nl = memchr(ptr, '\n', b->buf + b->len - ptr)) != NULL) {
-        *nl = '\0';
-        int nb_idx = vizinho_por_fd(fd);
-        if (nb_idx >= 0)
+    char *ptr = b->buf; // ponteiro para percorrer o buffer de leitura (inicio do buffer)
+    char *nl; // ponteiro para encontrar a posição da próxima nova linha no buffer 
+
+    while ((nl = memchr(ptr, '\n', b->buf + b->len - ptr)) != NULL) { //percorre o buffer inteiro ate \n
+        *nl = '\0'; // susbstitui o \n por \0 para conseguir usar isso como string
+        int nb_idx = vizinho_por_fd(fd); // encontrar o indice do viz que corresponde ao fd que enviou a mensagem
+        if (nb_idx >= 0) // caso encontre  o vizinho que queremos, processa a msg recebida   
             processa_msg_vizinho(nb_idx, ptr);
-        ptr = nl + 1;
+        ptr = nl + 1; // atualiza o ponteiro para o início da próxima linha a ser processada (após o \n)
     }
     /* Move dados restantes para o início do buffer */
-    int restante = (int)(b->buf + b->len - ptr);
-    memmove(b->buf, ptr, restante);
+    int restante = (int)(b->buf + b->len - ptr); // quantidade de dados restantes buffer 
+    memmove(b->buf, ptr, restante); // 
     b->len = restante;
     return 0;
 }
@@ -557,6 +559,7 @@ static int le_vizinho(int fd) {
  * ================================================================ */
 static void aceita_ligacao(void) {
     struct sockaddr addr; // estrutura para armazenar o endereço do cliente que está tentando se conectar
+    // socket addr nao tem campo para ip e porto mas tem campo sa_family para indicar o tipo de endereço e campo genérico sa_data onde estao os  outros dados
     socklen_t addrlen = sizeof addr; // variável para armazenar o tamanho do endereço do cliente, necessário para a função accept
     int newfd = accept(listen_fd, &addr, &addrlen); // aceita a nova conexão TCP, criando um novo socket para comunicação com o cliente e preenchendo a estrutura addr com as informações do cliente
     if (newfd == -1) { perror("accept"); return; } 
@@ -564,7 +567,7 @@ static void aceita_ligacao(void) {
     /* Obtém IP do cliente */
     char ip_str[64] = "?";
     if (addr.sa_family == AF_INET) { // verificação de IPv4
-        struct sockaddr_in *sa = (struct sockaddr_in *)&addr; //
+        struct sockaddr_in *sa = (struct sockaddr_in *)&addr; // converção de sa_data para sin_family, sin_addr e sin port
         inet_ntop(AF_INET, &sa->sin_addr, ip_str, sizeof ip_str); // converte o endereço IP do cliente para uma string legível e armazena em ip_str
     }
 
@@ -578,7 +581,7 @@ static void aceita_ligacao(void) {
 
 /* join net id  OU  direct join net id */
 static void cmd_join(const char *net, const char *id, int directo) {
-    if (joined) {
+    if (joined) { // se já estiver em uma rede, não pode se juntar a outra sem sair primeiro
         printf("Já está na rede %s com id %s. Use 'leave' primeiro.\n",
                my_net, my_id);
         return;
@@ -586,7 +589,7 @@ static void cmd_join(const char *net, const char *id, int directo) {
     strncpy(my_net, net, sizeof my_net - 1);
     strncpy(my_id,  id,  sizeof my_id  - 1);
     joined = 1;
-    rota_init();
+    rota_init(); //inicia tabela de roteamento para o nó, definindo a distância para si próprio como 0 e o sucessor como si próprio
 
     if (directo) {
         printf("Direct join: rede=%s id=%s (sem registo no servidor)\n",
@@ -595,14 +598,15 @@ static void cmd_join(const char *net, const char *id, int directo) {
     }
 
     /* REG tid 0 net id IP TCP\n */
-    int tid = rand() % 1000;
-    char pedido[BUF_SIZE], resposta[BUF_SIZE];
+    int tid = rand() % 1000; // gera tdi aleatório para a transação de registro
+    char pedido[BUF_SIZE], resposta[BUF_SIZE]; // buffers para armazenar pedido de registo e resposta do serbior de nós
     snprintf(pedido, sizeof pedido,
              "REG %03d 0 %s %s %s %s\n", tid, my_net, my_id, my_ip, my_tcp);
 
-    if (udp_transacao(pedido, resposta, sizeof resposta) == 0) {
-        int rtid, rop;
-        if (sscanf(resposta, "REG %d %d", &rtid, &rop) == 2) {
+    if (udp_transacao(pedido, resposta, sizeof resposta) == 0) { //se udp tiver sucesso, processa a resposta do servidor de nós
+        int rtid, rop; // armazenar tid de resposta e código de operação da resposta do servidor de nós
+        // rop -> 1 = registo bem sucedido, 2 = erro base de dados cheia, outros valores = erro no registo
+        if (sscanf(resposta, "REG %d %d", &rtid, &rop) == 2) { 
             if (rop == 1)
                 printf("Registado na rede %s com id %s\n", my_net, my_id);
             else if (rop == 2)
@@ -631,6 +635,7 @@ static void cmd_leave(void) {
 
     if (udp_transacao(pedido, resposta, sizeof resposta) == 0) {
         int rtid, rop;
+        // rop -> 4 = remoção bem sucedida, outros valores = erro na remoção
         if (sscanf(resposta, "REG %d %d", &rtid, &rop) == 2) {
             if (rop == 4)
                 printf("Registo removido da rede %s\n", my_net);
@@ -656,22 +661,23 @@ static void cmd_show_nodes(const char *net) {
     char pedido[BUF_SIZE], resposta[BUF_SIZE];
     snprintf(pedido, sizeof pedido, "NODES %03d 0 %s\n", tid, net);
 
-    if (udp_transacao(pedido, resposta, sizeof resposta) != 0) return;
+    if (udp_transacao(pedido, resposta, sizeof resposta) != 0) return; // se servidor de nós não responder, retorna sem processar a resposta
 
     /* Resposta: "NODES tid 1 net\nid1\nid2\n..." */
-    int rtid, rop;
-    char rnet[4];
-    char *linha = resposta;
+    int rtid, rop; // tid resposta e operacao de resposts
+    char rnet[4]; // nome da rede na resposta do servidor de nós
+    char *linha = resposta; // ponteiro para percorrer a resposta do servidor de nós linha a linha
     /* Lê cabeçalho */
-    char *nl = strchr(linha, '\n');
+    char *nl = strchr(linha, '\n'); // encontra \n
     if (!nl) { printf("Resposta mal formada\n"); return; }
     *nl = '\0';
-    if (sscanf(linha, "NODES %d %d %3s", &rtid, &rop, rnet) != 3 || rop != 1) {
+    if (sscanf(linha, "NODES %d %d %3s", &rtid, &rop, rnet) != 3 || rop != 1) { //rop = 1 -> sucesso, outros valores -> erro
         printf("Erro ao obter nós da rede %s\n", net);
         return;
     }
     printf("Nós na rede %s:\n", net);
-    linha = nl + 1;
+    linha = nl + 1; // atualiza o ponteiro para a próxima linha após o cabeçalho
+    // iterar pela resposta do servidor de nós linha a linha, imprimindo os ids dos nós encontrados ao encontrar um \n, substitui por \0 para conseguir usar como string e imprime o id do nó
     while (*linha) {
         nl = strchr(linha, '\n');
         if (nl) *nl = '\0';
@@ -683,9 +689,9 @@ static void cmd_show_nodes(const char *net) {
 }
 
 /* add edge (ae) id  –  obtém contacto via servidor de nós e liga */
-static void cmd_add_edge(const char *id) {
+static void cmd_add_edge(const char *id) { //
     if (!joined) { printf("Não está em nenhuma rede.\n"); return; }
-    if (vizinho_por_id(id) >= 0) {
+    if (vizinho_por_id(id) >= 0) { // se já existe um vizinho com o id especificado, não pode adicionar uma nova aresta para esse id
         printf("Já existe aresta com %s\n", id); return;
     }
 
@@ -695,10 +701,10 @@ static void cmd_add_edge(const char *id) {
     snprintf(pedido, sizeof pedido,
              "CONTACT %03d 0 %s %s\n", tid, my_net, id);
 
-    if (udp_transacao(pedido, resposta, sizeof resposta) != 0) return;
+    if (udp_transacao(pedido, resposta, sizeof resposta) != 0) return; //erro caso servidor de nos nao responda
 
-    int rtid, rop;
-    char rnet[4], rid[4], rip[64], rtcp[16];
+    int rtid, rop; 
+    char rnet[4], rid[4], rip[64], rtcp[16]; // rnet -> nome da rede na resposta do servidor de nós, rid -> id do nó encontrado, rip -> ip do nó encontrado, rtcp -> porto tcp do nó encontrado
     if (sscanf(resposta, "CONTACT %d %d %3s %3s %63s %15s",
                &rtid, &rop, rnet, rid, rip, rtcp) < 4) {
         printf("Resposta mal formada\n"); return;
@@ -711,53 +717,53 @@ static void cmd_add_edge(const char *id) {
     }
 
     /* Liga por TCP */
-    int fd = tcp_liga(rip, rtcp);
+    int fd = tcp_liga(rip, rtcp); // conexão tcp entre o nó atual e o nó encontrado com ip rip e porto rtcp
     if (fd == -1) { printf("Erro ao ligar a %s:%s\n", rip, rtcp); return; }
 
     /* Envia NEIGHBOR my_id */
     char msg[BUF_SIZE];
     snprintf(msg, sizeof msg, "NEIGHBOR %s\n", my_id);
-    if (tcp_envia(fd, msg) == -1) {
+    if (tcp_envia(fd, msg) == -1) { // envia mensagem de vizinhança para o nó encontrado, caso haja erro no envio, fecha a conexão tcp e retorna
         printf("Erro ao enviar NEIGHBOR\n"); close(fd); return;
     }
 
-    adiciona_vizinho(fd, id, rip, rtcp);
+    adiciona_vizinho(fd, id, rip, rtcp); // adiciona o no encontrado como vizinho, com o fd da conexão tcp, id do nó encontrado, ip e porto tcp do nó encontrado
 }
 
 /* direct add edge (dae) id idIP idTCP */
 static void cmd_direct_add_edge(const char *id, const char *ip,
                                  const char *tcp_port) {
     if (!joined) { printf("Não está em nenhuma rede.\n"); return; }
-    if (vizinho_por_id(id) >= 0) {
+    if (vizinho_por_id(id) >= 0) { // se já existe um vizinho com o id especificado, não pode adicionar uma nova aresta para esse id
         printf("Já existe aresta com %s\n", id); return;
     }
 
-    int fd = tcp_liga(ip, tcp_port);
+    int fd = tcp_liga(ip, tcp_port); // conexão tcp entre o nó atual e o nó com ip e porto tcp especificados
     if (fd == -1) { printf("Erro ao ligar a %s:%s\n", ip, tcp_port); return; }
 
     char msg[BUF_SIZE];
     snprintf(msg, sizeof msg, "NEIGHBOR %s\n", my_id);
-    if (tcp_envia(fd, msg) == -1) {
+    if (tcp_envia(fd, msg) == -1) { // envia mensagem para todos ps vizinhos com o id do nó atual, caso haja erro no envio, fecha a conexão tcp e retorna
         printf("Erro ao enviar NEIGHBOR\n"); close(fd); return;
     }
 
-    adiciona_vizinho(fd, id, ip, tcp_port);
+    adiciona_vizinho(fd, id, ip, tcp_port); //adiciona o nó como vizinho, com o fd da conexão tcp, id do nó, ip e porto tcp especificados
 }
 
 /* remove edge (re) id */
-static void cmd_remove_edge(const char *id) {
-    int idx = vizinho_por_id(id);
-    if (idx < 0) { printf("Não existe aresta com %s\n", id); return; }
-    remove_vizinho(idx);
+static void cmd_remove_edge(const char *id) { // remove a aresta para o vizinho com o id especificado
+    int idx = vizinho_por_id(id); // encontra o índice do vizinho com o id especificado
+    if (idx < 0) { printf("Não existe aresta com %s\n", id); return; } // caso nao encontre, da erro
+    remove_vizinho(idx); // remove o vizinho encontrado, que fecha a conexão tcp e atualiza as rotas para os destinos que tinham esse vizinho como sucessor, entrando em coordenação se necessário
 }
 
 /* show neighbors (sg) */
-static void cmd_show_neighbors(void) {
+static void cmd_show_neighbors(void) { 
     if (nb_count == 0) {
         printf("Sem vizinhos.\n"); return;
     }
     printf("Vizinhos:\n");
-    for (int i = 0; i < nb_count; i++)
+    for (int i = 0; i < nb_count; i++) //percorre lista de vizinhos que esta no vetor na porsição i = 0 até ao nº de vizinhos nb_count, imprimindo o id, ip e porto tcp de cada vizinho
         printf("  id=%-3s  ip=%-20s  tcp=%s\n",
                vizinhos[i].id, vizinhos[i].ip, vizinhos[i].tcp);
 }
@@ -769,29 +775,29 @@ static void cmd_show_neighbors(void) {
 /* announce (a) – anuncia o próprio nó a todos os vizinhos */
 static void cmd_announce(void) {
     if (!joined) { printf("Não está em nenhuma rede.\n"); return; }
-    int id_int = atoi(my_id);
+    int id_int = atoi(my_id); // converção de string do id do no para int
     /* Distância 0 a si próprio */
     rota[id_int].dist = 0;
     rota[id_int].succ = id_int;
     /* Envia ROUTE id 0 a todos os vizinhos */
-    envia_route_todos(id_int, 0);
+    envia_route_todos(id_int, 0); // msg de rota para vizinhos com destino id_int (o próprio nó) e distância 0
     printf("Anúncio enviado (sou %s)\n", my_id);
 }
 
 /* show routing (sr) dest */
 static void cmd_show_routing(const char *dest_str) {
-    int dest = atoi(dest_str);
-    if (dest < 0 || dest >= MAX_DEST) {
+    int dest = atoi(dest_str); // converção de string do destino para int
+    if (dest < 0 || dest >= MAX_DEST) { // verificação de destino válido
         printf("Destino inválido\n"); return;
     }
-    if (rota[dest].estado == COORDENACAO) {
+    if (rota[dest].estado == COORDENACAO) { //
         printf("Destino %02d: estado=COORDENACAO\n", dest);
     } else {
-        if (rota[dest].dist == INF)
+        if (rota[dest].dist == INF) //se dist for inf, entao nao ha rota esse para o destino
             printf("Destino %02d: estado=EXPEDICAO  dist=INF  succ=NENHUM\n", dest);
         else
             printf("Destino %02d: estado=EXPEDICAO  dist=%d  succ=%02d\n",
-                   dest, rota[dest].dist, rota[dest].succ);
+                   dest, rota[dest].dist, rota[dest].succ); // se dist for diferente de inf, imprime a distância e o sucessor para esse destino
     }
 }
 
@@ -958,7 +964,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 4) strncpy(reg_ip,  argv[3], sizeof reg_ip  - 1);
     if (argc >= 5) strncpy(reg_udp, argv[4], sizeof reg_udp - 1);
 
-    srand((unsigned)getpid()); // para gerar tid aleatórios ?
+    srand((unsigned)getpid()); // para gerar tid aleatórios
     setup_signals();           // ???????????????
 
     /* Cria socket UDP para comunicação com servidor de nós */
@@ -973,7 +979,7 @@ int main(int argc, char *argv[]) {
 
     ciclo_principal();
 
-    close(listen_fd);
-    close(udp_fd);
-    return 0;
+    close(listen_fd); // fecha o socket de escuta TCP
+    close(udp_fd); // fecha o socket UDP
+    return 0; 
 }
