@@ -425,7 +425,9 @@ static void adiciona_vizinho(int fd, const char *id,
         if (rota[d].estado == EXPEDICAO && rota[d].dist != INF) // se o destino d estiver em estado de expedição e a distância para esse destino for diferente de infinito, envia uma mensagem ROUTE para o novo vizinho com a distância atual para esse destino
             envia_route_a(i, d, rota[d].dist); // msg route parar viz i com destino d e distancia rota[d].dist
     }
-    printf("Vizinho %s adicionado (fd=%d)\n", id, fd);
+    /* Se ainda não sabemos o ID (??), adiamos a mensagem de adição até receber NEIGHBOR */
+    if (strcmp(id, "??") != 0)
+        printf("Vizinho %s adicionado (fd=%d)\n", id, fd);
 }
 
 /* Remove vizinho por índice */
@@ -476,8 +478,22 @@ static void processa_msg_vizinho(int nb_idx, const char *linha) {
     if (strcmp(tipo, "NEIGHBOR") == 0) {
         /* NEIGHBOR id  – identificação do vizinho */
         char id[4];
-        if (sscanf(linha, "NEIGHBOR %3s", id) == 1)
+        if (sscanf(linha, "NEIGHBOR %3s", id) == 1) {
+            char old_id[4];
+            strncpy(old_id, vizinhos[nb_idx].id, sizeof old_id - 1);
+            old_id[sizeof old_id - 1] = '\0';
             strncpy(vizinhos[nb_idx].id, id, sizeof vizinhos[nb_idx].id - 1);
+            vizinhos[nb_idx].id[sizeof vizinhos[nb_idx].id - 1] = '\0';
+            if (strcmp(old_id, id) != 0) {
+                if (strcmp(old_id, "??") == 0) {
+                    printf("Vizinho %s adicionado (fd=%d)\n",
+                           id, vizinhos[nb_idx].fd);
+                } else {
+                    printf("Vizinho %s identificado como %s (fd=%d)\n",
+                           old_id, id, vizinhos[nb_idx].fd);
+                }
+            }
+        }
     }
     else if (strcmp(tipo, "ROUTE") == 0) {
         int dest, n;
