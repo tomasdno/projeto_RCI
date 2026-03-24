@@ -1,0 +1,14 @@
+extern char my_ip[64];
+extern char my_tcp[16];
+extern char reg_ip[64];
+extern char reg_udp[16];
+extern char my_net[4];
+extern char my_id[4];
+extern int  joined;
+extern int listen_fd;
+extern int udp_fd;
+extern Vizinho    vizinhos[MAX_VIZINHOS];
+extern int        nb_count;
+extern EntradaRota rota[MAX_DEST];
+extern int         monitor_on;
+extern ReadBuf rb[1024];
