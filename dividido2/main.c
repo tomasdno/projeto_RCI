@@ -1,11 +1,6 @@
 /*
  * OWR – OverlayWithRouting  (Rede Sobreposta com Encaminhamento)
  *
- * Cobre as etapas 2, 3 e 4 do ponto 4.1 do enunciado:
- *   Etapa 2: rede com 1 nó          -> join, leave
- *   Etapa 3: rede com vários nós    -> n, ae, sg, re, dj, dae
- *   Etapa 4: anúncio/encaminhamento -> a, sr, sm, em
- *
  * Uso: ./OWR IP TCP [regIP [regUDP]]
  *
  * DESCRICAO DO FICHEIRO:
