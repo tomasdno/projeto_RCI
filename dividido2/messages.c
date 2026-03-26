@@ -1,4 +1,6 @@
-/*
+/* 
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+    
  * DESCRICAO DO FICHEIRO:
  * Recepção e processamento de mensagens TCP enviadas por vizinhos, incluindo:
  *   - NEIGHBOR: identificação do vizinho após ligar.

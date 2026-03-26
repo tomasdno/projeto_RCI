@@ -1,4 +1,6 @@
-/*
+/* 
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+    
  *  DESCRICAO DO FICHEIRO:
  *  Implementação de todos os comandos de linha de comandos do nó OWR:
  *   join, leave, exit

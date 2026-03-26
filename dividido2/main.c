@@ -1,6 +1,8 @@
 /*
  * OWR – OverlayWithRouting  (Rede Sobreposta com Encaminhamento)
  *
+ * Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+ * 
  * Uso: ./OWR IP TCP [regIP [regUDP]]
  *
  * DESCRICAO DO FICHEIRO:

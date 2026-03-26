@@ -1,4 +1,6 @@
 /*
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+
  * DESCRICAO DO FICHEIRO:
  * Declaração de constantes, estruturas e tipos usados em todo o projeto.
  * Inclui a estrutura de vizinhos TCP, a tabela de roteamento por destino

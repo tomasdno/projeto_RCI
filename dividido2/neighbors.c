@@ -1,4 +1,6 @@
-/*
+/* 
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+
  * DESCRICAO DO FICHEIRO:
  * Gestão da lista de vizinhos TCP activos, incluindo:
  *   - Pesquisa de vizinho por fd ou por id.

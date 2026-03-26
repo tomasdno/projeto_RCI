@@ -1,4 +1,6 @@
 /*
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+
  * DESCRICAO DO FICHEIRO:
  * Implementação do protocolo de encaminhamento, incluindo:
  *   - Inicialização da tabela de roteamento (distância 0 para o próprio nó).

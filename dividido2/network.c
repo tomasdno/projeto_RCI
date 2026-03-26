@@ -1,4 +1,6 @@
 /*
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+
  * DESCRICAO DO FICHEIRO:
  * Funções de comunicação de rede, cobrindo:
  *   - Criação do socket UDP e transações UDP com timeout para comunicar

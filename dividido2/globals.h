@@ -1,4 +1,6 @@
-/*
+/* 
+    Tomás Oliveira ist1109254, Pedro Condesso ist1110147, LEEC-25/26
+
  * DESCRICAO DO FICHEIRO:
  * Declaração (extern) das variáveis globais partilhadas entre os vários
  * módulos do projecto. As definições encontram-se em main.c.
