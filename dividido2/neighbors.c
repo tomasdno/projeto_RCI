@@ -97,21 +97,24 @@ void remove_vizinho(int idx) {
     close(dest_fd);
 
     /* Protocolo de encaminhamento: remoção de aresta */
+    // só actualiza rotas se o vizinho estava identificado 
+    int vizinho_id_int = -1;
+    if (strcmp(vizinhos[idx].id, "??") != 0)
+        vizinho_id_int = atoi(vizinhos[idx].id);
+
     for (int d = 0; d < MAX_DEST; d++) {
         if (rota[d].estado == EXPEDICAO) {
-            if (rota[d].succ == atoi(vizinhos[idx].id)) {
-                /* sucessor perdido -> entra em coordenação */
+            /* só entra em coordenação se o sucessor era este vizinho identificado */
+            if (vizinho_id_int >= 0 && rota[d].succ == vizinho_id_int) {
                 rota[d].estado     = COORDENACAO;
                 rota[d].succ_coord = -1;
                 rota[d].dist       = INF;
                 rota[d].succ       = -1;
-                
                 for (int k = 0; k < nb_count; k++) {
                     if (k == idx) continue;
                     rota[d].coord[k] = 1;
                     envia_coord_a(k, d);
                 }
-                /* se não há outros vizinhos, volta a EXPEDICAO */
                 int tem_outros = 0;
                 for (int k = 0; k < nb_count; k++)
                     if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; }
@@ -121,14 +124,12 @@ void remove_vizinho(int idx) {
             /* COORDENACAO: vizinho removido já não é dependência */
             rota[d].coord[idx] = 0;
 
-            // verifica se toda a coordenação terminou 
             int todos_zero = 1;
             for (int k = 0; k < nb_count; k++)
                 if (k != idx && rota[d].coord[k]) { todos_zero = 0; break; }
 
             if (todos_zero) {
                 rota[d].estado = EXPEDICAO;
-                /* envia ROUTE a todos os vizinhos restantes (não ao removido) */
                 if (rota[d].dist != INF) {
                     char msg_r[BUF_SIZE];
                     snprintf(msg_r, sizeof msg_r, "ROUTE %02d %d\n", d, rota[d].dist);
@@ -139,7 +140,6 @@ void remove_vizinho(int idx) {
                         tcp_envia(vizinhos[k].fd, msg_r);
                     }
                 }
-                /* envia UNCOORD ao succ_coord se existir e não for o vizinho removido */
                 if (rota[d].succ_coord != -1) {
                     char sc_str[4];
                     snprintf(sc_str, sizeof sc_str, "%02d", rota[d].succ_coord);

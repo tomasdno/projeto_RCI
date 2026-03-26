@@ -109,17 +109,25 @@ void recebe_route(int from_nb, int dest, int n) {
         printf("[MONITOR] <- %s: ROUTE %02d %d\n",
                vizinhos[from_nb].id, dest, n);
 
-    if (dest == atoi(my_id)) return;  /* ignora anúncios do próprio nó */
-    
-    
-    if (strcmp(vizinhos[from_nb].id, "??") == 0) return;  // Ignora mensagens de vizinhos ainda não identificados 
-    
+    if (dest == atoi(my_id)) return;
+    if (strcmp(vizinhos[from_nb].id, "??") == 0) return;
     if (dest < 0 || dest >= MAX_DEST) return;
 
+    int from_id   = atoi(vizinhos[from_nb].id);
     int nova_dist = n + 1;
-    if (rota[dest].dist == INF || nova_dist < rota[dest].dist) {
+
+    /* Atualiza se:
+     *  (a) não há rota -> qualquer rota é melhor
+     *  (b) nova rota é mais curta
+     *  (c) o remetente É o nosso sucessor actual -> a sua distância
+     *      é a nossa única fonte de verdade, mesmo que piore */
+    int is_succ = (from_id == rota[dest].succ);
+
+    if (rota[dest].dist == INF || nova_dist < rota[dest].dist || is_succ) {
+        if (rota[dest].dist == nova_dist && rota[dest].succ == from_id)
+            return;  /* nada mudou, evita propagação desnecessária */
         rota[dest].dist = nova_dist;
-        rota[dest].succ = atoi(vizinhos[from_nb].id);
+        rota[dest].succ = from_id;
         if (rota[dest].estado == EXPEDICAO)
             envia_route_todos(dest, rota[dest].dist);
     }

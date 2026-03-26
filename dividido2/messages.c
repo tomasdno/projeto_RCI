@@ -46,21 +46,48 @@ void processa_msg_vizinho(int nb_idx, const char *linha) {
     if (sscanf(linha, "%31s", tipo) != 1) return;
 
     if (strcmp(tipo, "NEIGHBOR") == 0) {
-        /* Identifica o vizinho: actualiza o id temporário "??" */
         char id[4];
-        if (sscanf(linha, "NEIGHBOR %3s", id) == 1) {
-            char old_id[4];
-            strncpy(old_id, vizinhos[nb_idx].id, sizeof old_id - 1);
-            old_id[sizeof old_id - 1] = '\0';
-            strncpy(vizinhos[nb_idx].id, id, sizeof vizinhos[nb_idx].id - 1);
-            vizinhos[nb_idx].id[sizeof vizinhos[nb_idx].id - 1] = '\0';
-            if (strcmp(old_id, id) != 0) {
-                if (strcmp(old_id, "??") == 0)
-                    printf("Vizinho %s adicionado (fd=%d)\n", id, vizinhos[nb_idx].fd);
-                else
-                    printf("Vizinho %s identificado como %s (fd=%d)\n",
-                           old_id, id, vizinhos[nb_idx].fd);
-            }
+        if (sscanf(linha, "NEIGHBOR %3s", id) != 1) return;
+
+        /* valida formato: exactamente 2 dígitos */
+        if (strlen(id) != 2 || id[0] < '0' || id[0] > '9' ||
+                                id[1] < '0' || id[1] > '9') {
+            fprintf(stderr, "NEIGHBOR: id inválido '%s', a fechar ligação\n", id);
+            /* fecha esta ligação para não ficar com um vizinho lixo */
+            close(vizinhos[nb_idx].fd);
+            /* remove_vizinho será chamado pelo ciclo principal quando
+             * le_vizinho() devolver -1 — não precisamos de o chamar aqui */
+            return;
+        }
+
+        /* self-loop: ignora ligações do próprio nó */
+        if (strcmp(id, my_id) == 0) {
+            fprintf(stderr, "NEIGHBOR: ligação do próprio nó (%s), a fechar\n", id);
+            close(vizinhos[nb_idx].fd);
+            return;
+        }
+
+        /* duplicado: já existe vizinho com este id num fd diferente */
+        int dup = vizinho_por_id(id);
+        if (dup >= 0 && dup != nb_idx) {
+            fprintf(stderr, "NEIGHBOR: id %s já existe (fd=%d), a ignorar\n",
+                    id, vizinhos[dup].fd);
+            close(vizinhos[nb_idx].fd);
+            return;
+        }
+
+        /* actualiza o id do vizinho */
+        char old_id[4];
+        strncpy(old_id, vizinhos[nb_idx].id, sizeof old_id - 1);
+        old_id[sizeof old_id - 1] = '\0';
+        strncpy(vizinhos[nb_idx].id, id, sizeof vizinhos[nb_idx].id - 1);
+        vizinhos[nb_idx].id[sizeof vizinhos[nb_idx].id - 1] = '\0';
+        if (strcmp(old_id, id) != 0) {
+            if (strcmp(old_id, "??") == 0)
+                printf("Vizinho %s adicionado (fd=%d)\n", id, vizinhos[nb_idx].fd);
+            else
+                printf("Vizinho %s identificado como %s (fd=%d)\n",
+                       old_id, id, vizinhos[nb_idx].fd);
         }
     }
     else if (strcmp(tipo, "ROUTE") == 0) {
@@ -79,23 +106,25 @@ void processa_msg_vizinho(int nb_idx, const char *linha) {
             recebe_uncoord(nb_idx, dest);
     }
     else if (strcmp(tipo, "CHAT") == 0) {
-        /* CHAT origin dest mensagem */
         int origin, dest;
         char mensagem[CHAT_MAX + 1] = "";
         if (sscanf(linha, "CHAT %d %d %128[^\n]", &origin, &dest, mensagem) >= 2) {
+            /* validação de bounds antes de qualquer acesso a rota[] */
+            if (origin < 0 || origin >= MAX_DEST || dest < 0 || dest >= MAX_DEST) {
+                fprintf(stderr, "CHAT: origin/dest fora do intervalo (%d->%d)\n", origin, dest);
+                return;
+            }
             int my_id_int = atoi(my_id);
             if (dest == my_id_int) {
                 printf("[CHAT] De %02d: %s\n", origin, mensagem);
             } else {
-                /* Reencaminha pelo sucessor conhecido para dest */
                 if (rota[dest].dist != INF && rota[dest].succ >= 0) {
                     char succ_str[4];
                     snprintf(succ_str, sizeof succ_str, "%02d", rota[dest].succ);
                     int succ_idx = vizinho_por_id(succ_str);
                     if (succ_idx >= 0) {
                         char fwd[BUF_SIZE];
-                        snprintf(fwd, sizeof fwd, "CHAT %02d %02d %s\n",
-                                 origin, dest, mensagem);
+                        snprintf(fwd, sizeof fwd, "CHAT %02d %02d %s\n", origin, dest, mensagem);
                         tcp_envia(vizinhos[succ_idx].fd, fwd);
                     } else {
                         printf("Erro: sem rota para %02d\n", dest);
@@ -106,10 +135,6 @@ void processa_msg_vizinho(int nb_idx, const char *linha) {
             }
         }
     }
-    else {
-        fprintf(stderr, "Mensagem desconhecida: %s\n", linha);
-    }
-}
 
 
 /* ================================================================
