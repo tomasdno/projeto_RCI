@@ -15,7 +15,18 @@
 #include "structs.h"
 #include "globals.h"
 
-/* Extern declarations */
+
+/* 
+    DESCRICAO DO FICHEIRO:
+    Processamento de mensagens recebidas de vizinhos TCP, incluindo:
+        - Processamento de mensagens NEIGHBOR, ROUTE, COORD, UNCOORD e CHAT
+        - Leitura de dados de um fd TCP e processamento linha a linha, lidando com mensagens TCP fragmentadas
+    
+
+*/
+
+
+// funções externas 
 extern void recebe_route(int from_nb, int dest, int n);
 extern void recebe_coord(int from_nb, int dest);
 extern void recebe_uncoord(int from_nb, int dest);

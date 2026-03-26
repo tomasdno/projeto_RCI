@@ -14,7 +14,21 @@
 
 #include "structs.h"
 
-/* Extern declarations */
+/* 
+    DESCRICAO DO FICHEIRO:
+    Core inicial do programa
+    - Função main para inicializar o programa, configurar sockets e iniciar o ciclo principal
+    - Ciclo principal usando select para monitorar stdin, socket de escuta TCP, socket UDP e conexões TCP com vizinhos
+ -??--- Configuração de sinais para ignorar SIGPIPE
+    - Função select
+    - Função para aceitar novas conexões TCP de vizinhos
+    - Função para calcular o maior fd para passar ao select
+    
+
+*/
+
+
+// Funçoes externas
 extern void adiciona_vizinho(int fd, const char *id, const char *ip, const char *tcp_port);
 extern void processa_stdin(void);
 extern int le_vizinho(int fd);

@@ -15,6 +15,17 @@
 #include "structs.h"
 #include "globals.h"
 
+
+/* 
+    DESCRICAO DO FICHEIRO:
+    Funçoes realcionada com toda a comunicação de rede, incluindo:
+        - Função para criar um socket UDP e uma função para realizar transações UDP com timeout
+        - Função para criar um socket TCP de servidor e uma função para criar um socket TCP de cliente
+        - Função para enviar mensagens completas por um socket TCP, lidando com possíveis fragmentações  
+
+*/
+
+
 /* ================================================================
  * SERVIDOR UDP (comunicação com servidor de nós)
  * ================================================================ */
@@ -67,6 +78,7 @@ int udp_transacao(const char *pedido, char *resposta, int resp_size) { // slides
 int cria_tcp_servidor(const char *porto) {
     struct addrinfo hints, *res; //struct com informações para socket TCP
     int fd, yes = 1;
+    //printf("entrei no cria_tcp_servidor\n");
 
     // slides tcp server
     memset(&hints, 0, sizeof hints);
@@ -100,6 +112,8 @@ int tcp_liga(const char *ip, const char *porto) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
+     
+    //printf("entrei no tcp_liga\n");
 
     if (getaddrinfo(ip, porto, &hints, &res) != 0) {
         fprintf(stderr, "Erro: getaddrinfo %s:%s\n", ip, porto);
@@ -125,4 +139,5 @@ int tcp_envia(int fd, const char *msg) { // envia a mensagem msg para o fd espec
         enviado += (size_t)n; // atualiza a quantidade de bytes enviados
     }
     return 0;
+    
 }

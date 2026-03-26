@@ -15,7 +15,16 @@
 #include "structs.h"
 #include "globals.h"
 
-/* Extern declarations */
+/* 
+    DESCRICAO DO FICHEIRO:
+    Implementação das funções para gerenciar vizinhos TCP, incluindo:
+        - Função para encontrar vizinho por fd e por id
+        - Função para adicionar um novo vizinho à lista de vizinhos, enviando mensagens de rota para o novo vizinho conforme necessário
+        - Função para remover um vizinho da lista de vizinhos, atualizando a tabela de roteamento e entrando em coordenação se o vizinho removido for o sucessor de algum destino  
+
+*/
+
+// funcoes extermas
 extern void envia_route_a(int nb_idx, int dest, int dist);
 extern void envia_coord_a(int nb_idx, int dest);
 extern void envia_uncoord_a(int nb_idx, int dest);

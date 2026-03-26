@@ -15,7 +15,15 @@
 #include "structs.h"
 #include "globals.h"
 
-/* Extern declarations */
+/* 
+    DESCRICAO DO FICHEIRO:
+    Implementação das funções relacionadas ao roteamento, incluindo:
+        - Função para inicializar a tabela de roteamento
+        - Funções para enviar mensagens de rota, coordenação e descoordenação para vizinhos específicos ou para todos os vizinhos
+        - Função para processar mensagens de rota recebidas de vizinhos, atualizando a tabela de roteamento conforme necessário
+*/
+
+// funções externas
 extern int tcp_envia(int fd, const char *msg);
 extern int vizinho_por_id(const char *id);
 

@@ -15,7 +15,19 @@
 #include "structs.h"
 #include "globals.h"
 
-/* Extern declarations */
+
+/* 
+    DESCRICAO DO FICHEIRO:
+    Implementação dos comandos de linha de comando do nó OWR, incluindo:
+        - Comandos join e leave
+        - Comandos show nodes, add edge, remove edge, show neighbors, direct add edge
+        - Comandos announce, show routing, start monitor e end monitor
+        - Comando message para enviar mensagens de chat para outros nós da rede
+
+*/
+
+
+// Funções externas
 extern int udp_transacao(const char *pedido, char *resposta, int resp_size);
 extern int tcp_liga(const char *ip, const char *porto);
 extern int tcp_envia(int fd, const char *msg);
@@ -26,7 +38,7 @@ extern void envia_route_todos(int dest, int dist);
 extern int vizinho_por_id(const char *id);
 
 /* ================================================================
- * COMANDOS: ETAPA 2 – join / leave
+ * COMANDOS join / leave
  * ================================================================ */
 
 /* join net id  OU  direct join net id */
@@ -101,8 +113,8 @@ void cmd_leave(void) {
 }
 
 /* ================================================================
- * COMANDOS: ETAPA 3 – show nodes, add edge, remove edge,
- *                     show neighbors, direct add edge
+ * COMANDOS show nodes, add edge, remove edge,
+ *          show neighbors, direct add edge
  * ================================================================ */
 
 /* show nodes (n) net */
@@ -219,7 +231,7 @@ void cmd_show_neighbors(void) {
 }
 
 /* ================================================================
- * COMANDOS: ETAPA 4 – announce, show routing, monitor
+ * COMANDOS announce, show routing, monitor, message
  * ================================================================ */
 
 /* announce (a) – anuncia o próprio nó a todos os vizinhos */
@@ -254,6 +266,49 @@ void cmd_show_routing(const char *dest_str) {
 /* start monitor / end monitor */
 void cmd_start_monitor(void) { monitor_on = 1; printf("Monitor ON\n"); }
 void cmd_end_monitor(void)   { monitor_on = 0; printf("Monitor OFF\n"); }
+
+/* Envia uma mensagem CHAT para um destino usando a rota de expedição atual */
+void cmd_send_message(int dest, const char *texto) {
+    int my_id_int;
+    int succ_idx;
+    char succ_str[4];
+    char texto_limpo[CHAT_MAX + 1]; // buffer para armazenar o texto da mensagem de chat, limitado ao tamanho máximo permitido para mensagens de chat
+    char msg[BUF_SIZE]; // buffer para armazenar a mensagem de chat formatada a ser enviada para o sucessor do destino
+
+    if (!joined) { printf("Não está em nenhuma rede.\n"); return; }
+    if (dest < 0 || dest >= MAX_DEST) { printf("Destino inválido\n"); return; }
+    if (texto == NULL || *texto == '\0') { printf("Uso: message dest texto\n"); return; }
+
+    my_id_int = atoi(my_id);
+    snprintf(texto_limpo, sizeof texto_limpo, "%.*s", CHAT_MAX, texto); // limita o texto ao tamanho máximo permitido para mensagens de chat
+
+    if (dest == my_id_int) {
+        printf("[CHAT] De %02d: %s\n", my_id_int, texto_limpo);
+        return;
+    }
+
+    if (rota[dest].estado != EXPEDICAO || rota[dest].dist == INF ||  rota[dest].succ < 0) {
+        printf("Erro: sem rota para %02d\n", dest);
+        return;
+    }
+
+    snprintf(succ_str, sizeof succ_str, "%02d", rota[dest].succ); // converte o id do sucessor para string, para poder procurar o índice do vizinho com esse id
+    succ_idx = vizinho_por_id(succ_str); // encontrar o indice vizinho com id do sucessor para dest
+    if (succ_idx < 0) {
+        printf("Erro: sucessor %02d não está ligado\n", rota[dest].succ);
+        return;
+    }
+
+    snprintf(msg, sizeof msg, "CHAT %02d %02d %s\n", my_id_int, dest, texto_limpo); // formatacao msg a ser enviada para  o sucessor do dest 
+    if (monitor_on)
+        printf("[MONITOR] -> %s: %s", vizinhos[succ_idx].id, msg);
+
+    if (tcp_envia(vizinhos[succ_idx].fd, msg) == -1) { 
+        printf("Erro ao enviar CHAT para %02d\n", dest);
+        return;
+    }
+    printf("CHAT enviado para %02d via %02d\n", dest, rota[dest].succ);
+}
 
 /* ================================================================
  * PROCESSAMENTO DE COMANDOS DO UTILIZADOR (stdin)
@@ -334,6 +389,20 @@ void processa_stdin(void) {
     else if (strcmp(cmd, "em") == 0) {
         cmd_end_monitor();
     }
+    else if (strcmp(cmd, "message") == 0 || strcmp(cmd, "m") == 0) {
+        if (strlen(a1) == 0 || strlen(a2) == 0) {
+            printf("Uso: message dest texto\n");
+        } else {
+            int dest = atoi(a1);
+            char texto[CHAT_MAX + 1];
+            snprintf(texto, sizeof texto, "%s", a2);
+            if (strlen(a3) > 0) {
+                strncat(texto, " ", sizeof texto - strlen(texto) - 1); // espaço entre a2 e a3 no texto da mensagem de chat, caso haja texto em a3
+                strncat(texto, a3, sizeof texto - strlen(texto) - 1); // junta o resto do texto
+            }
+            cmd_send_message(dest, texto);
+        }
+    }
     /* --- Ajuda --- */
     else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "h") == 0) {
         printf("Comandos disponíveis:\n");
@@ -350,6 +419,7 @@ void processa_stdin(void) {
         printf("  sr dest               -- mostrar rota para dest\n");
         printf("  sm                    -- activar monitor\n");
         printf("  em                    -- desactivar monitor\n");
+        printf("  m/message dest texto  -- enviar mensagem para um nó\n");
     }
     else {
         printf("Comando desconhecido: '%s'. Digite 'help'.\n", cmd);

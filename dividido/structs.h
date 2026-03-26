@@ -1,3 +1,13 @@
+
+/* 
+    DESCRICAO DO FICHEIRO:
+    Declaração de estruturas usadas em vários ficheiros do projeto, incluindo:
+        - Estrutura para representar um vizinho TCP, com campos para fd, id, ip e porto tcp
+        - Estrutura para representar a entrada da tabela de roteamento para cada destino, com campos para distância, sucessor, estado e informações de coordenação
+        - Estrutura para buffer de leitura parcial por fd, usada para lidar com mensagens TCP fragmentadas
+        - Declaração de variáveis globais usadas em vários ficheiros do projeto
+*/
+
 #define MAX_VIZINHOS   64       // máximo de vizinhos simultâneos   
 #define MAX_DEST       100      // IDs de 00 a 99                   
 #define BUF_SIZE       1024     // tamanho genérico de buffer        
