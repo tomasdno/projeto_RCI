@@ -136,7 +136,7 @@ void processa_msg_vizinho(int nb_idx, const char *linha) {
         }
     }
 
-
+}
 /* ================================================================
  * LEITURA INCREMENTAL DO BUFFER TCP
  * ================================================================ */

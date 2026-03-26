@@ -30,6 +30,7 @@
 extern void envia_route_a(int nb_idx, int dest, int dist);
 extern void envia_coord_a(int nb_idx, int dest);
 extern void envia_uncoord_a(int nb_idx, int dest);
+extern int  tcp_envia(int fd, const char *msg);
 
 
 /* ================================================================
