@@ -1,13 +1,14 @@
 /*
- * DESCRICAO DO FICHEIRO:
- * Implementação de todos os comandos de linha de comandos do nó OWR:
- *   Etapa 2: join, leave, exit
- *   Etapa 3: show nodes (n), add edge (ae), remove edge (re),
- *            show neighbors (sg), direct join (dj), direct add edge (dae)
- *   Etapa 4: announce (a), show routing (sr),
- *            start monitor (sm), end monitor (em), message (m)
- * Inclui também processa_stdin(), que lê uma linha do stdin, faz o
- * parse do comando e despacha para a função correspondente.
+ *  DESCRICAO DO FICHEIRO:
+ *  Implementação de todos os comandos de linha de comandos do nó OWR:
+ *   join, leave, exit
+ *   show nodes (n), add edge (ae), remove edge (re),
+ *     show neighbors (sg), direct join (dj), direct add edge (dae)
+ *   announce (a), show routing (sr),
+ *     start monitor (sm), end monitor (em), message (m)
+ * 
+ *  Inclui também processa_stdin(), que lê uma linha do stdin, faz o
+ *  parse do comando e despacha para a função correspondente.
  */
 
 #include <stdio.h>
@@ -322,11 +323,11 @@ void processa_stdin(void) {
     if (strlen(linha) == 0) return;
 
     char cmd[32], a1[128], a2[128], a3[BUF_SIZE];
-    a1[0] = a2[0] = a3[0] = '\0';
-    /* cmd -> comando; a1 -> 1.º argumento; a2 -> 2.º; a3 -> resto da linha */
+    a1[0] = a2[0] = a3[0] = '\0'; /*inicializacao dos argumentos como strings vazias */
+    /* cmd -> comando; a1 -> id; a2 -> ip; a3 -> resto da linha, inicializacao dos argumentos como strongs vazias*/
     sscanf(linha, "%31s %127s %127s %1023[^\n]", cmd, a1, a2, a3);
 
-    /* --- Etapa 2 --- */
+    
     if (strcmp(cmd, "join") == 0 || strcmp(cmd, "j") == 0) {
         if (strlen(a1) == 0 || strlen(a2) == 0)
             printf("Uso: join net id\n");
@@ -340,7 +341,7 @@ void processa_stdin(void) {
         if (joined) cmd_leave();
         exit(0);
     }
-    /* --- Etapa 3 --- */
+   
     else if (strcmp(cmd, "n") == 0 || strcmp(cmd, "show") == 0) {
         if (strcmp(cmd, "show") == 0 && strcmp(a1, "nodes") == 0)
             cmd_show_nodes(a2);
@@ -372,7 +373,7 @@ void processa_stdin(void) {
         else
             cmd_direct_add_edge(a1, a2, a3);
     }
-    /* --- Etapa 4 --- */
+    
     else if (strcmp(cmd, "a") == 0) {
         cmd_announce();
     }
@@ -400,7 +401,7 @@ void processa_stdin(void) {
             cmd_send_message(dest, texto);
         }
     }
-    /* --- Ajuda --- */
+    
     else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "h") == 0) {
         printf("Comandos disponíveis:\n");
         printf("  j/join net id         -- entrar na rede\n");

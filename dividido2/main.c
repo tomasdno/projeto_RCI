@@ -96,11 +96,6 @@ static void aceita_ligacao(void) {
     int newfd = accept(listen_fd, &addr, &addrlen);
     if (newfd == -1) { perror("accept"); return; }
 
-    if (!joined) { // recusa ligações se ainda não estiver registado
-        close(newfd);
-        return;
-    }
-
     char ip_str[64] = "?";
     if (addr.sa_family == AF_INET) {
         struct sockaddr_in *sa = (struct sockaddr_in *)&addr;

@@ -10,7 +10,7 @@
 #define BUF_SIZE       1024     /* tamanho genérico de buffer        */
 #define CHAT_MAX       128      /* máximo de carateres numa msg chat */
 
-#define REG_IP_DFLT    "193.136.138.142"
+#define REG_IP_DFLT    "193.136.138.142"     /* 192.168.1.1 */
 #define REG_UDP_DFLT   "59000"
 
 #define INF  -1  /* distância infinita (indica destino inalcançável) */
