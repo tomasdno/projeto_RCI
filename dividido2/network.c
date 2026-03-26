@@ -39,19 +39,19 @@ int cria_udp_socket(void) {
 
 /* Envia 'pedido' ao servidor de nós e aguarda resposta até 2 segundos.
  * Devolve 0 em caso de sucesso, -1 em caso de erro ou timeout. */
-int udp_transacao(const char *pedido, char *resposta, int resp_size) {
+int udp_transacao(const char *pedido, char *resposta, int resp_size) { //slides udp
     struct addrinfo hints, *res;
     memset(&hints, 0, sizeof hints);
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    if (getaddrinfo(reg_ip, reg_udp, &hints, &res) != 0) {
+    if (getaddrinfo(reg_ip, reg_udp, &hints, &res) != 0) { // obtém as informações de endereço do servidor de nós usando o IP e porto configurados
         fprintf(stderr, "Erro: getaddrinfo servidor de nós\n");
         return -1;
     }
 
     ssize_t n = sendto(udp_fd, pedido, strlen(pedido), 0,
-                       res->ai_addr, res->ai_addrlen);
+                       res->ai_addr, res->ai_addrlen); // envia o pedido para o servidor de nós usando o socket UDP
     freeaddrinfo(res);
     if (n == -1) { perror("sendto"); return -1; }
 

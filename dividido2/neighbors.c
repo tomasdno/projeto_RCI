@@ -116,6 +116,7 @@ void remove_vizinho(int idx) {
                     rota[d].coord[k] = 1;
                     envia_coord_a(k, d);
                 }
+                /* verifica se há outros vizinhos dependentes dessa coordenação, para decidir se mantém o estado de coordenação ou volta a expedição */
                 int tem_outros = 0;
                 for (int k = 0; k < nb_count; k++)
                     if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; }
@@ -124,11 +125,11 @@ void remove_vizinho(int idx) {
         } else {
             /* COORDENACAO: vizinho removido já não é dependência */
             rota[d].coord[idx] = 0;
-
+            /* ver se algum vizinho tem coord = 1 para este dest */
             int todos_zero = 1;
             for (int k = 0; k < nb_count; k++)
                 if (k != idx && rota[d].coord[k]) { todos_zero = 0; break; }
-
+            /* se nao houver dependencias, volta a por estado expedicao */
             if (todos_zero) {
                 rota[d].estado = EXPEDICAO;
                 if (rota[d].dist != INF) {
@@ -141,6 +142,7 @@ void remove_vizinho(int idx) {
                         tcp_envia(vizinhos[k].fd, msg_r);
                     }
                 }
+                /* envio uncoord para sucessor */
                 if (rota[d].succ_coord != -1) {
                     char sc_str[4];
                     snprintf(sc_str, sizeof sc_str, "%02d", rota[d].succ_coord);

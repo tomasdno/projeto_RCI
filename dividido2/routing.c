@@ -121,8 +121,10 @@ void recebe_route(int from_nb, int dest, int n) {
      *  (b) nova rota é mais curta
      *  (c) o remetente É o nosso sucessor actual -> a sua distância
      *      é a nossa única fonte de verdade, mesmo que piore */
-    int is_succ = (from_id == rota[dest].succ);
 
+    /* verifica se o remetente é o sucessor actual para esse destino */
+    int is_succ = (from_id == rota[dest].succ); 
+    /* verificacao melhor rota, ve se remetente e successor atual */
     if (rota[dest].dist == INF || nova_dist < rota[dest].dist || is_succ) {
         if (rota[dest].dist == nova_dist && rota[dest].succ == from_id)
             return;  /* nada mudou, evita propagação desnecessária */

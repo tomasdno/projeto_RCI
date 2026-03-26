@@ -114,10 +114,11 @@ void processa_msg_vizinho(int nb_idx, const char *linha) {
                 fprintf(stderr, "CHAT: origin/dest fora do intervalo (%d->%d)\n", origin, dest);
                 return;
             }
-            int my_id_int = atoi(my_id);
+            int my_id_int = atoi(my_id); 
             if (dest == my_id_int) {
                 printf("[CHAT] De %02d: %s\n", origin, mensagem);
             } else {
+                /* verifica se tem rota para o destino antes de encaminhar */
                 if (rota[dest].dist != INF && rota[dest].succ >= 0) {
                     char succ_str[4];
                     snprintf(succ_str, sizeof succ_str, "%02d", rota[dest].succ);
@@ -155,6 +156,7 @@ int le_vizinho(int fd) {
 
     char *ptr = b->buf;
     char *nl;
+    /* encontra o proximo '\n' para delimitar uma linha completa */
     while ((nl = memchr(ptr, '\n', b->buf + b->len - ptr)) != NULL) {
         *nl = '\0';
         int nb_idx = vizinho_por_fd(fd);
