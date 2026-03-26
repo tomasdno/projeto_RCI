@@ -110,6 +110,10 @@ void recebe_route(int from_nb, int dest, int n) {
                vizinhos[from_nb].id, dest, n);
 
     if (dest == atoi(my_id)) return;  /* ignora anúncios do próprio nó */
+    
+    
+    if (strcmp(vizinhos[from_nb].id, "??") == 0) return;  // Ignora mensagens de vizinhos ainda não identificados 
+    
     if (dest < 0 || dest >= MAX_DEST) return;
 
     int nova_dist = n + 1;
@@ -132,18 +136,26 @@ void recebe_coord(int from_nb, int dest) {
     if (dest < 0 || dest >= MAX_DEST) return;
     int j = atoi(vizinhos[from_nb].id);
 
+    /* Ignora mensagens de vizinhos ainda não identificados */
+    if (strcmp(vizinhos[from_nb].id, "??") == 0) return;
+
     if (rota[dest].estado == COORDENACAO) {
+        // se j era o nosso sucessor candidato, a rota já não é válida 
+        if (rota[dest].succ == j) {
+            rota[dest].dist = INF;
+            rota[dest].succ = -1;
+        }
         envia_uncoord_a(from_nb, dest);
         return;
     }
 
     if (j != rota[dest].succ) {
-        /* Não é o sucessor actual: envia rota + UNCOORD */
+        // Não é o sucessor actual: envia rota + UNCOORD 
         if (rota[dest].dist != INF)
             envia_route_a(from_nb, dest, rota[dest].dist);
         envia_uncoord_a(from_nb, dest);
     } else {
-        /* É o sucessor actual: entra em coordenação */
+        // É o sucessor actual: entra em coordenação 
         rota[dest].estado     = COORDENACAO;
         rota[dest].succ_coord = rota[dest].succ;
         rota[dest].dist       = INF;
@@ -164,6 +176,9 @@ void recebe_uncoord(int from_nb, int dest) {
         printf("[MONITOR] <- %s: UNCOORD %02d\n", vizinhos[from_nb].id, dest);
 
     if (dest < 0 || dest >= MAX_DEST) return;
+
+    /* Ignora mensagens de vizinhos ainda não identificados */
+    if (strcmp(vizinhos[from_nb].id, "??") == 0) return;
 
     if (rota[dest].estado == COORDENACAO) {
         rota[dest].coord[from_nb] = 0;

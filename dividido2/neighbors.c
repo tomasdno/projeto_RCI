@@ -96,34 +96,74 @@ void remove_vizinho(int idx) {
     printf("Vizinho %s removido\n", vizinhos[idx].id);
     close(dest_fd);
 
+    /* Protocolo de encaminhamento: remoção de aresta */
     for (int d = 0; d < MAX_DEST; d++) {
         if (rota[d].estado == EXPEDICAO) {
             if (rota[d].succ == atoi(vizinhos[idx].id)) {
-                /* Sucessor perdido: entra em coordenação */
+                /* sucessor perdido -> entra em coordenação */
                 rota[d].estado     = COORDENACAO;
                 rota[d].succ_coord = -1;
                 rota[d].dist       = INF;
                 rota[d].succ       = -1;
-
+                
                 for (int k = 0; k < nb_count; k++) {
                     if (k == idx) continue;
                     rota[d].coord[k] = 1;
                     envia_coord_a(k, d);
                 }
-
-                /* Se não há outros vizinhos, volta a EXPEDICAO imediatamente */
+                /* se não há outros vizinhos, volta a EXPEDICAO */
                 int tem_outros = 0;
                 for (int k = 0; k < nb_count; k++)
                     if (k != idx && rota[d].coord[k]) { tem_outros = 1; break; }
                 if (!tem_outros) rota[d].estado = EXPEDICAO;
             }
         } else {
-            /* Em COORDENACAO: o vizinho removido deixa de ser dependência */
+            /* COORDENACAO: vizinho removido já não é dependência */
             rota[d].coord[idx] = 0;
+
+            // verifica se toda a coordenação terminou 
+            int todos_zero = 1;
+            for (int k = 0; k < nb_count; k++)
+                if (k != idx && rota[d].coord[k]) { todos_zero = 0; break; }
+
+            if (todos_zero) {
+                rota[d].estado = EXPEDICAO;
+                /* envia ROUTE a todos os vizinhos restantes (não ao removido) */
+                if (rota[d].dist != INF) {
+                    char msg_r[BUF_SIZE];
+                    snprintf(msg_r, sizeof msg_r, "ROUTE %02d %d\n", d, rota[d].dist);
+                    for (int k = 0; k < nb_count; k++) {
+                        if (k == idx) continue;
+                        if (monitor_on)
+                            printf("[MONITOR] -> %s: %s", vizinhos[k].id, msg_r);
+                        tcp_envia(vizinhos[k].fd, msg_r);
+                    }
+                }
+                /* envia UNCOORD ao succ_coord se existir e não for o vizinho removido */
+                if (rota[d].succ_coord != -1) {
+                    char sc_str[4];
+                    snprintf(sc_str, sizeof sc_str, "%02d", rota[d].succ_coord);
+                    int sc_idx = vizinho_por_id(sc_str);
+                    if (sc_idx >= 0 && sc_idx != idx)
+                        envia_uncoord_a(sc_idx, d);
+                }
+            }
         }
     }
 
-    /* Remove da lista por swap com o último elemento */
+    /* swap com o último e corrige o array coord */
     memset(&rb[dest_fd], 0, sizeof rb[dest_fd]);
-    vizinhos[idx] = vizinhos[--nb_count];
+    int last = --nb_count;
+    if (idx != last) {
+        vizinhos[idx] = vizinhos[last];
+        /* move o coord do vizinho que foi para a posição idx */
+        for (int d = 0; d < MAX_DEST; d++) {
+            rota[d].coord[idx]  = rota[d].coord[last];
+            rota[d].coord[last] = 0;
+        }
+    } else {
+        /* o removido era o último: limpa coord */
+        for (int d = 0; d < MAX_DEST; d++)
+            rota[d].coord[last] = 0;
+    }
 }
