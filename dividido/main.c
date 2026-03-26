@@ -27,6 +27,26 @@
 
 */
 
+/*
+ * OWR - OverlayWithRouting
+ * Rede Sobreposta com Encaminhamento
+ *
+ * Cobre as etapas 2, 3 e 4 do ponto 4.1 do enunciado:
+ *   Etapa 2: rede com 1 nó  -> comandos join, leave
+ *   Etapa 3: rede com vários nós -> comandos show nodes (n), add edge (ae),
+ *                                   show neighbors (sg), remove edge (re),
+ *                                   direct join (dj), direct add edge (dae)
+ *   Etapa 4: anúncio e encaminhamento -> comandos announce (a),
+ *                                        show routing (sr), start monitor (sm),
+ *                                        end monitor (em)
+ *
+ * Compilar: gcc OWR.c -o OWR
+ * Usar:     ./OWR IP TCP [regIP [regUDP]]
+ *
+ * Exemplo:  ./OWR 192.168.1.10 58100
+ *           ./OWR 192.168.1.10 58100 193.136.138.142 59000
+ */
+
 
 // Funçoes externas
 extern void adiciona_vizinho(int fd, const char *id, const char *ip, const char *tcp_port);
